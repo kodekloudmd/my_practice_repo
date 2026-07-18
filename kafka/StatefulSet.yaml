@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: kafka }
+spec:
+  replicas: 3
+  serviceName: kafka-headless
+  selector: { matchLabels: { app: kafka } }
+  template:
+    metadata: { labels: { app: kafka } }
+    spec:
+      containers:
+      - name: broker
+        image: apache/kafka:3.6.0
+        env:
+        - name: KAFKA_NODE_ID
+          valueFrom: { fieldRef: { fieldPath: metadata.name } } # kafka-0 → 0
+        - name: KAFKA_LISTENERS
+          value: "INTERNAL://:9092,EXTERNAL://:9094"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INTERNAL://$(POD_NAME).kafka-headless.svc.cluster.local:9092,EXTERNAL://<node-ip>:<nodeport>"
+        volumeMounts:
+        - mountPath: /var/lib/kafka/data
+          name: datadir
+  volumeClaimTemplates:
+  - metadata: { name: datadir }
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources: { requests: { storage: 100Gi } }
