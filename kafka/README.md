@@ -7,11 +7,11 @@ kubectl create namespace kafka
 
 ## 2. Apply All Manifests
 ```bash
-kubectl apply -f kafka-headless-service.yaml -n kafka
+kubectl apply -f headless-service.yaml -n kafka
 kubectl apply -f kafka-external-service.yaml -n kafka
 kubectl apply -f local-pv.yaml
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-kubectl apply -f kafka-statefulset.yaml -n kafka
+kubectl apply -f statefulset.yaml -n kafka
 ```
 
 ## 3. Wait for Pods (takes approximately 2 minutes)
