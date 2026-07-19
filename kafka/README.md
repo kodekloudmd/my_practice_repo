@@ -21,7 +21,7 @@ kubectl wait --for=condition=ready pod -l app=kafka -n kafka --timeout=300s
 
 ## 4. Verify Cluster
 ```bash
-kubectl exec -it kafka-0 -n kafka -- bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+kubectl exec -it kafka-0 -n kafka -- /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
 ```
 
 ## 5. Create Topics
