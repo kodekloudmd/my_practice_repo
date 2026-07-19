@@ -26,14 +26,14 @@ kubectl exec -it kafka-0 -n kafka -- /opt/kafka/bin/kafka-broker-api-versions.sh
 
 ## 5. Create Topics
 ```bash
-ekctl exec -it kafka-0 -n kafka -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic raw-email --partitions 4 --replication-factor 2
-ekctl exec -it kafka-0 -n kafka -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic enriched-email --partitions 4 --replication-factor 2
+kubectl exec -it kafka-0 -n kafka -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic raw-email --partitions 4 --replication-factor 2
+kubectl exec -it kafka-0 -n kafka -- bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic enriched-email --partitions 4 --replication-factor 2
 ```
 (Note: The commands for creating topics seem to have a typo; they should start with `kubectl exec` instead of `ekctl exec`.)
 
 ## 6. Test with Console Producer/Consumer
 ```bash
-ekctl exec -it kafka-0 -n kafka -- bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic raw-email
-ekctl exec -it kafka-0 -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic raw-email --from-beginning
+kubectl exec -it kafka-0 -n kafka -- bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic raw-email
+kubectl exec -it kafka-0 -n kafka -- bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic raw-email --from-beginning
 ```
 (Note: Same as above, replace `ekctl` with `kubectl`.)
