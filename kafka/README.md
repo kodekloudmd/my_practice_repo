@@ -10,6 +10,7 @@ kubectl create namespace kafka
 kubectl apply -f kafka-headless-service.yaml -n kafka
 kubectl apply -f kafka-external-service.yaml -n kafka
 kubectl apply -f local-pv.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
 kubectl apply -f kafka-statefulset.yaml -n kafka
 ```
 
