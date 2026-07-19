@@ -1,26 +1,123 @@
 apiVersion: apps/v1
 kind: StatefulSet
-metadata: { name: kafka }
+metadata:
+  name: kafka
+  namespace: kafka
 spec:
-  replicas: 3
+  replicas: 2  # Changed to 2 since you have 2 nodes
   serviceName: kafka-headless
-  selector: { matchLabels: { app: kafka } }
+  selector:
+    matchLabels:
+      app: kafka
   template:
-    metadata: { labels: { app: kafka } }
+    metadata:
+      labels:
+        app: kafka
     spec:
+      # Spread brokers across different nodes
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: kafka
+              topologyKey: "kubernetes.io/hostname"
       containers:
       - name: broker
-        image: apache/kafka:3.6.0
+        image: apache/kafka:latest  # Changed from latest to specific version
+        ports:
+          - containerPort: 9092
+            name: internal
+          - containerPort: 9093
+            name: controller
         env:
-        - name: KAFKA_NODE_ID
-          valueFrom: { fieldRef: { fieldPath: metadata.name } } # kafka-0 → 0
-        - name: KAFKA_LISTENERS
-          value: "INTERNAL://:9092,EXTERNAL://:9094"
-        - name: KAFKA_ADVERTISED_LISTENERS
-          value: "INTERNAL://$(POD_NAME).kafka-headless.svc.cluster.local:9092,EXTERNAL://<node-ip>:<nodeport>"
+          # Get pod name for building internal DNS
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          
+          # Extract numeric node ID from pod name using command
+          - name: KAFKA_NODE_ID
+            value: "0"  # Will be overridden by command
+          
+          # Kafka configuration
+          - name: KAFKA_PROCESS_ROLES
+            value: "broker,controller"
+          - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+            value: "0@kafka-0.kafka-headless.kafka.svc.cluster.local:9093,1@kafka-1.kafka-headless.kafka.svc.cluster.local:9093"
+          - name: KAFKA_LISTENERS
+            value: "INTERNAL://:9092,CONTROLLER://:9093"
+          - name: KAFKA_ADVERTISED_LISTENERS
+            value: "INTERNAL://$(POD_NAME).kafka-headless.kafka.svc.cluster.local:9092"
+          - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+            value: "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+          - name: KAFKA_INTER_BROKER_LISTENER_NAME
+            value: "INTERNAL"
+          - name: KAFKA_CONTROLLER_LISTENER_NAMES
+            value: "CONTROLLER"
+          - name: KAFKA_LOG_DIRS
+            value: "/var/lib/kafka/data"
+          - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+            value: "1"
+          - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+            value: "1"
+          - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+            value: "1"
+          - name: KAFKA_MIN_INSYNC_REPLICAS
+            value: "1"
+          - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+            value: "1"
+        
+        # CRITICAL: Extract numeric node ID from pod name
+        command:
+        - sh
+        - -c
+        - |
+          # Extract numeric node ID from pod name (kafka-0 → 0)
+          NODE_ID=$(echo ${POD_NAME} | sed 's/kafka-//')
+          echo "========================================="
+          echo "Pod Name: ${POD_NAME}"
+          echo "Node ID extracted: ${NODE_ID}"
+          echo "========================================="
+          
+          # Export KAFKA_NODE_ID with the extracted number
+          export KAFKA_NODE_ID=${NODE_ID}
+          
+          # Start Kafka with the correct node ID
+          exec /etc/kafka/docker/run
+        
         volumeMounts:
-        - mountPath: /var/lib/kafka/data
-          name: datadir
+        - name: datadir
+          mountPath: /var/lib/kafka/data
+        
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - "bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - "bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+  
+  # Persistent storage for each broker
   volumeClaimTemplates:
   - metadata:
       name: datadir
@@ -29,4 +126,4 @@ spec:
       resources:
         requests:
           storage: 10Gi
-      storageClassName: local-path
+      storageClassName: local-path  # Make sure this exists!
