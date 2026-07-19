@@ -22,7 +22,11 @@ spec:
         - mountPath: /var/lib/kafka/data
           name: datadir
   volumeClaimTemplates:
-  - metadata: { name: datadir }
+  - metadata:
+      name: datadir
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      resources: { requests: { storage: 100Gi } }
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: local-path
